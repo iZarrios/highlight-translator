@@ -11,5 +11,12 @@ describe('content-script lookup lifecycle', () => {
     expect(contentScript).not.toMatch(
       /addEventListener\(\s*window,\s*['"]scroll['"]/,
     );
+
+    const lookupCard = await readFile(
+      'src/entrypoints/highlight.content/lookup-card.tsx',
+      'utf8',
+    );
+    expect(lookupCard).toMatch(/addEventListener\(\s*['"]scroll['"]/);
+    expect(lookupCard).toContain('selection.anchor.rectangle()');
   });
 });

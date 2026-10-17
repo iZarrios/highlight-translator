@@ -6,10 +6,15 @@ export type SelectionRectangle = Pick<
   'left' | 'right' | 'top' | 'bottom' | 'width' | 'height'
 >;
 
+export type SelectionAnchor = {
+  rectangle(): SelectionRectangle | undefined;
+};
+
 export type SelectionSnapshot = {
   text: string;
   nearbyContext?: string;
   rectangle: SelectionRectangle;
+  anchor: SelectionAnchor;
 };
 
 function compact(text: string): string {
@@ -51,6 +56,12 @@ function rangeContainer(range: Range): Element | null {
   );
 }
 
+function usableRectangle(
+  rectangle: SelectionRectangle,
+): SelectionRectangle | undefined {
+  return rectangle.width > 0 || rectangle.height > 0 ? rectangle : undefined;
+}
+
 function inputSelection(): SelectionSnapshot | undefined {
   const element = document.activeElement;
   if (
@@ -70,6 +81,12 @@ function inputSelection(): SelectionSnapshot | undefined {
     text,
     ...(nearbyContext ? { nearbyContext } : {}),
     rectangle: element.getBoundingClientRect(),
+    anchor: {
+      rectangle: () =>
+        element.isConnected
+          ? usableRectangle(element.getBoundingClientRect())
+          : undefined,
+    },
   };
 }
 
@@ -91,5 +108,16 @@ export function readSelection(): SelectionSnapshot | undefined {
     ? contextAround(container.textContent, text)
     : undefined;
 
-  return { text, ...(nearbyContext ? { nearbyContext } : {}), rectangle };
+  const anchorRange = range.cloneRange();
+  return {
+    text,
+    ...(nearbyContext ? { nearbyContext } : {}),
+    rectangle,
+    anchor: {
+      rectangle: () =>
+        anchorRange.startContainer.isConnected
+          ? usableRectangle(anchorRange.getBoundingClientRect())
+          : undefined,
+    },
+  };
 }

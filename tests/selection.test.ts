@@ -10,24 +10,37 @@ describe('readSelection', () => {
     const range = document.createRange();
     range.setStart(textNode, 4);
     range.setEnd(textNode, 19);
+    let rectangle = {
+      left: 10,
+      right: 80,
+      top: 20,
+      bottom: 35,
+      width: 70,
+      height: 15,
+    };
     Object.defineProperty(range, 'getBoundingClientRect', {
-      value: () => ({
-        left: 10,
-        right: 80,
-        top: 20,
-        bottom: 35,
-        width: 70,
-        height: 15,
-      }),
+      value: () => rectangle,
     });
+    Object.defineProperty(range, 'cloneRange', { value: () => range });
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
 
-    expect(readSelection()).toMatchObject({
+    const snapshot = readSelection() as
+      | (ReturnType<typeof readSelection> & {
+          anchor: { rectangle(): { top: number; bottom: number } | undefined };
+        })
+      | undefined;
+    expect(snapshot).toMatchObject({
       text: 'quick brown fox',
       nearbyContext: 'The quick brown fox jumps over the lazy dog.',
       rectangle: { left: 10, right: 80, top: 20, bottom: 35 },
+    });
+
+    rectangle = { ...rectangle, top: -30, bottom: -15 };
+    expect(snapshot?.anchor.rectangle()).toMatchObject({
+      top: -30,
+      bottom: -15,
     });
   });
 

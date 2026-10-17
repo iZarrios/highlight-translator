@@ -9,6 +9,18 @@ export type CardPosition = {
 const GAP = 10;
 const MARGIN = 12;
 
+export function isRectangleVisible(
+  rectangle: SelectionRectangle,
+  viewport: { width: number; height: number },
+): boolean {
+  return (
+    rectangle.bottom > 0 &&
+    rectangle.top < viewport.height &&
+    rectangle.right > 0 &&
+    rectangle.left < viewport.width
+  );
+}
+
 export function positionCard(
   selection: SelectionRectangle,
   card: { width: number; height: number },

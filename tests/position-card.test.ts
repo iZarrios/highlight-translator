@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { positionCard } from '@/selection/position-card';
+import { isRectangleVisible, positionCard } from '@/selection/position-card';
 
 describe('positionCard', () => {
   it('centers below a selection when there is room', () => {
@@ -27,5 +27,28 @@ describe('positionCard', () => {
         { width: 320, height: 600 },
       ),
     ).toEqual({ left: 12, top: 310, placement: 'above' });
+  });
+
+  it('detects when the selected text has scrolled outside the viewport', () => {
+    const viewport = { width: 800, height: 600 };
+    expect(
+      isRectangleVisible(
+        { left: 10, right: 80, top: 20, bottom: 35, width: 70, height: 15 },
+        viewport,
+      ),
+    ).toBe(true);
+    expect(
+      isRectangleVisible(
+        {
+          left: 10,
+          right: 80,
+          top: -30,
+          bottom: -15,
+          width: 70,
+          height: 15,
+        },
+        viewport,
+      ),
+    ).toBe(false);
   });
 });

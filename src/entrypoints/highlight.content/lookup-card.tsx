@@ -14,7 +14,7 @@ import {
   type LookupResult,
   useLookup,
 } from '@/entrypoints/highlight.content/use-lookup';
-import { positionCard } from '@/selection/position-card';
+import { isRectangleVisible, positionCard } from '@/selection/position-card';
 
 function LoadingLine({ label }: { label: string }) {
   return (
@@ -80,29 +80,51 @@ export function LookupCard() {
   const result = useLookup(selection);
   const cardRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: 12, top: 12 });
+  const [anchorVisible, setAnchorVisible] = useState(true);
 
   useEffect(() => {
     if (!selection || !cardRef.current) return;
     const card = cardRef.current;
+    let animationFrame: number | undefined;
     const updatePosition = () => {
+      const selectionRectangle = selection.anchor.rectangle();
+      const viewport = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      const visible =
+        selectionRectangle !== undefined &&
+        isRectangleVisible(selectionRectangle, viewport);
+      setAnchorVisible(visible);
+      if (!selectionRectangle || !visible) return;
+
       const bounds = card.getBoundingClientRect();
       setPosition(
         positionCard(
-          selection.rectangle,
+          selectionRectangle,
           { width: bounds.width, height: bounds.height },
-          { width: window.innerWidth, height: window.innerHeight },
+          viewport,
         ),
       );
     };
-    const resizeObserver = new ResizeObserver(updatePosition);
+    const schedulePositionUpdate = () => {
+      if (animationFrame !== undefined)
+        window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(updatePosition);
+    };
+    const resizeObserver = new ResizeObserver(schedulePositionUpdate);
 
     updatePosition();
     resizeObserver.observe(card);
-    window.addEventListener('resize', updatePosition);
+    window.addEventListener('resize', schedulePositionUpdate);
+    window.addEventListener('scroll', schedulePositionUpdate, true);
 
     return () => {
+      if (animationFrame !== undefined)
+        window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
-      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('resize', schedulePositionUpdate);
+      window.removeEventListener('scroll', schedulePositionUpdate, true);
     };
   }, [selection]);
 
@@ -113,8 +135,15 @@ export function LookupCard() {
       ref={cardRef}
       role="dialog"
       aria-label="Translation and explanation"
-      className="fixed z-[2147483647] w-[380px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-border bg-card font-sans text-foreground shadow-[0_18px_55px_rgba(0,0,0,0.24)] backdrop-blur-xl"
-      style={{ left: position.left, top: position.top }}
+      aria-hidden={!anchorVisible}
+      className="fixed z-[2147483647] w-[380px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-border bg-card font-sans text-foreground shadow-[0_18px_55px_rgba(0,0,0,0.24)] backdrop-blur-xl transition-opacity duration-100"
+      style={{
+        left: position.left,
+        top: position.top,
+        opacity: anchorVisible ? 1 : 0,
+        pointerEvents: anchorVisible ? 'auto' : 'none',
+        visibility: anchorVisible ? 'visible' : 'hidden',
+      }}
     >
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <p className="line-clamp-2 min-w-0 text-xs leading-5 text-muted-foreground">

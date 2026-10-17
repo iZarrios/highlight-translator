@@ -13,6 +13,16 @@ const selection = (): SelectionSnapshot => ({
     width: 60,
     height: 20,
   },
+  anchor: {
+    rectangle: () => ({
+      left: 10,
+      right: 70,
+      top: 20,
+      bottom: 40,
+      width: 60,
+      height: 20,
+    }),
+  },
 });
 
 describe('lookup store', () => {
