@@ -10,22 +10,17 @@ import { useEffect, useRef, useState } from 'react';
 import { CollapsibleText } from '@/components/collapsible-text';
 import { Button } from '@/components/ui/button';
 import { useLookupStore } from '@/entrypoints/highlight.content/store';
-import { useLookup } from '@/entrypoints/highlight.content/use-lookup';
+import {
+  type LookupResult,
+  useLookup,
+} from '@/entrypoints/highlight.content/use-lookup';
 import { positionCard } from '@/selection/position-card';
-import type { TranslationResult } from '@/translation/translator';
 
-function LoadingLine({
-  label,
-  progress,
-}: {
-  label: string;
-  progress?: number;
-}) {
+function LoadingLine({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
       <LoaderCircle aria-hidden className="size-4 animate-spin" />
       <span>{label}</span>
-      {progress !== undefined && progress > 0 ? <span>{progress}%</span> : null}
     </div>
   );
 }
@@ -68,15 +63,15 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function translationEngineLabel(result: TranslationResult): string {
-  if (result.engine === 'offline-wasm') {
-    if (result.executionBackend === 'webgpu') return 'Offline · GPU';
-    if (result.executionBackend === 'wasm') return 'Offline · CPU';
-    return 'Offline';
-  }
-  if (result.engine === 'provider') return 'Configured AI';
-  if (result.engine === 'chromium') return 'Chrome on-device';
-  return 'Already English';
+function providerLabel(provider: LookupResult['provider']): string {
+  if (!provider) return 'Configured AI';
+  const location =
+    provider.location === 'device'
+      ? 'This device'
+      : provider.location === 'network'
+        ? 'Local network'
+        : 'Remote';
+  return `${location} · ${provider.name}`;
 }
 
 export function LookupCard() {
@@ -141,26 +136,18 @@ export function LookupCard() {
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <Languages className="size-3.5" />
             <h2 id="translation-title">
-              Translation
-              {result.translation.status === 'success'
-                ? ` · ${translationEngineLabel(result.translation.value)}`
-                : ''}
+              Translation · {providerLabel(result.provider)}
             </h2>
           </div>
           {result.translation.status === 'loading' ? (
-            <LoadingLine
-              label="Preparing local translation…"
-              {...(result.translation.progress === undefined
-                ? {}
-                : { progress: result.translation.progress })}
-            />
+            <LoadingLine label="Translating with configured AI…" />
           ) : null}
           {result.translation.status === 'success' ? (
             <div className="flex items-start justify-between gap-2">
               <p className="text-lg font-medium leading-7">
-                {result.translation.value.translatedText}
+                {result.translation.value}
               </p>
-              <CopyButton value={result.translation.value.translatedText} />
+              <CopyButton value={result.translation.value} />
             </div>
           ) : null}
           {result.translation.status === 'error' ? (
@@ -177,16 +164,7 @@ export function LookupCard() {
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <Sparkles className="size-3.5" />
             <h2 id="explanation-title">
-              Explanation ·{' '}
-              {result.provider
-                ? `${
-                    result.provider.location === 'device'
-                      ? 'This device'
-                      : result.provider.location === 'network'
-                        ? 'Local network'
-                        : 'Remote'
-                  } · ${result.provider.name}`
-                : 'Configured AI'}
+              Explanation · {providerLabel(result.provider)}
             </h2>
           </div>
           {result.explanation.status === 'loading' ? (

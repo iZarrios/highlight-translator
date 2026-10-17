@@ -10,6 +10,19 @@ const provider = createProviderProfile({
   apiKey: 'secret',
 });
 
+const result = {
+  translation: 'Once in a blue moon',
+  explanation: 'It is an idiom about rare events.',
+};
+
+function completion(content = JSON.stringify(result)) {
+  return JSON.stringify({ choices: [{ message: { content } }] });
+}
+
+function event(content: string): string {
+  return `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
+}
+
 describe('OpenAIExplanationClient', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -17,19 +30,15 @@ describe('OpenAIExplanationClient', () => {
     vi.stubGlobal('fetch', function (this: typeof globalThis) {
       if (this !== globalThis) throw new TypeError('Illegal invocation');
       return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: 'Bound correctly.' } }],
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
+        new Response(completion(), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
       );
     });
 
     const client = new OpenAIExplanationClient(provider);
-    await expect(client.explain({ text: 'hello' })).resolves.toBe(
-      'Bound correctly.',
-    );
+    await expect(client.explain({ text: 'hello' })).resolves.toEqual(result);
   });
 
   it('returns the explanation from a non-streaming completion', async () => {
@@ -38,37 +47,40 @@ describe('OpenAIExplanationClient', () => {
       provider,
       async (_input, init) => {
         requestBody = JSON.parse(String(init?.body));
-        return new Response(
-          JSON.stringify({
-            choices: [
-              { message: { content: 'It is an idiom about rare events.' } },
-            ],
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        );
+        return new Response(completion(), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
       },
     );
 
-    await expect(client.explain({ text: 'once in a blue moon' })).resolves.toBe(
-      'It is an idiom about rare events.',
-    );
-    expect(requestBody?.max_tokens).toBeLessThanOrEqual(180);
+    await expect(
+      client.explain({ text: 'once in a blue moon' }),
+    ).resolves.toEqual(result);
+    expect(requestBody?.max_tokens).toBeLessThanOrEqual(220);
+    expect(requestBody?.response_format).toEqual({
+      type: 'json_schema',
+      json_schema: expect.objectContaining({
+        name: 'translated_explanation',
+        strict: true,
+        schema: expect.objectContaining({
+          required: ['translation', 'explanation'],
+          additionalProperties: false,
+        }),
+      }),
+    });
   });
 
-  it('yields text from fragmented SSE events', async () => {
+  it('yields separate fields from fragmented structured SSE events', async () => {
     const encoder = new TextEncoder();
+    const first = event('{"translation":"Once in a blue');
+    const second = event(
+      ' moon","explanation":"A rare event with a \\"quoted\\" phrase."}',
+    );
     const body = new ReadableStream({
       start(controller) {
-        controller.enqueue(
-          encoder.encode(
-            'data: {"choices":[{"delta":{"content":"A rare"}}]}\n',
-          ),
-        );
-        controller.enqueue(
-          encoder.encode(
-            '\ndata: {"choices":[{"delta":{"content":" event."}}]}\n\n',
-          ),
-        );
+        controller.enqueue(encoder.encode(first.slice(0, 24)));
+        controller.enqueue(encoder.encode(first.slice(24) + second));
         controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         controller.close();
       },
@@ -82,14 +94,25 @@ describe('OpenAIExplanationClient', () => {
         }),
     );
 
-    const chunks: string[] = [];
+    const chunks: Array<{ field: string; text: string }> = [];
     for await (const chunk of client.streamExplanation({
       text: 'once in a blue moon',
     })) {
       chunks.push(chunk);
     }
 
-    expect(chunks.join('')).toBe('A rare event.');
+    expect(
+      chunks
+        .filter((chunk) => chunk.field === 'translation')
+        .map((chunk) => chunk.text)
+        .join(''),
+    ).toBe('Once in a blue moon');
+    expect(
+      chunks
+        .filter((chunk) => chunk.field === 'explanation')
+        .map((chunk) => chunk.text)
+        .join(''),
+    ).toBe('A rare event with a "quoted" phrase.');
   });
 
   it('turns an OpenAI error response into a useful error', async () => {
@@ -111,20 +134,33 @@ describe('OpenAIExplanationClient', () => {
     const client = new OpenAIExplanationClient(
       provider,
       async () =>
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: 'Normal response.' } }],
-          }),
-          {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          },
-        ),
+        new Response(completion(), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
     );
 
-    const chunks: string[] = [];
+    const chunks: Array<{ field: string; text: string }> = [];
     for await (const chunk of client.streamExplanation({ text: 'hello' }))
       chunks.push(chunk);
-    expect(chunks).toEqual(['Normal response.']);
+    expect(chunks).toEqual([
+      { field: 'translation', text: result.translation },
+      { field: 'explanation', text: result.explanation },
+    ]);
+  });
+
+  it('rejects a completion that does not match the schema', async () => {
+    const client = new OpenAIExplanationClient(
+      provider,
+      async () =>
+        new Response(completion('{"explanation":"Missing translation"}'), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+
+    await expect(client.explain({ text: 'hello' })).rejects.toThrow(
+      'invalid structured',
+    );
   });
 });

@@ -65,8 +65,8 @@ export function OptionsApp() {
             Highlight Translator
           </h1>
           <p className="mt-2 text-muted-foreground">
-            On-device translation with explanations from an AI endpoint you
-            control.
+            Translation and concise explanations from an OpenAI-compatible
+            endpoint you control.
           </p>
         </header>
 
@@ -87,38 +87,13 @@ export function OptionsApp() {
 
         <section className="rounded-2xl border border-border bg-card px-5 shadow-sm">
           <h2 className="pt-5 text-lg font-semibold">Behavior and privacy</h2>
-          <label className="block border-b border-border py-4 text-sm font-medium">
-            Translation engine
-            <select
-              className={fieldClass}
-              value={settings.translationMode}
-              onChange={(event) =>
-                void persist({
-                  ...settings,
-                  translationMode: event.target
-                    .value as AppSettings['translationMode'],
-                })
-              }
-            >
-              <option value="automatic">
-                Automatic — browser, offline WASM, then provider
-              </option>
-              <option value="offline-wasm">Offline WASM only</option>
-              <option value="provider">Configured AI provider only</option>
-              <option value="browser">Chrome built-in only</option>
-            </select>
-            <span className="mt-2 block text-xs font-normal leading-5 text-muted-foreground">
-              Offline WASM never sends highlighted text over the network. The
-              provider option sends it only to the active endpoint shown above.
-            </span>
-          </label>
           <Toggle
-            checked={settings.streamExplanations}
-            onChange={(streamExplanations) =>
-              void persist({ ...settings, streamExplanations })
+            checked={settings.streamResults}
+            onChange={(streamResults) =>
+              void persist({ ...settings, streamResults })
             }
-            label="Stream explanations"
-            description="Show explanation text as it is generated. Disable this for providers with unreliable streaming."
+            label="Stream AI results"
+            description="Show translation and explanation text as they are generated. Disable this for providers with unreliable streaming."
           />
           <Toggle
             checked={settings.historyEnabled}

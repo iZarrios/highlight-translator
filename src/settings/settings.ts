@@ -7,23 +7,15 @@ import {
 export type AppSettings = {
   providers: ProviderProfile[];
   activeProviderId?: string;
-  translationMode: TranslationMode;
-  streamExplanations: boolean;
+  streamResults: boolean;
   historyEnabled: boolean;
   savePageDetails: boolean;
   retentionLimit: number;
 };
 
-export type TranslationMode =
-  | 'automatic'
-  | 'browser'
-  | 'offline-wasm'
-  | 'provider';
-
 export const DEFAULT_SETTINGS: AppSettings = {
   providers: [],
-  translationMode: 'automatic',
-  streamExplanations: true,
+  streamResults: true,
   historyEnabled: true,
   savePageDetails: false,
   retentionLimit: 1_000,
@@ -44,9 +36,8 @@ const storedSettingsSchema = z
       )
       .optional(),
     activeProviderId: z.string().optional(),
-    translationMode: z
-      .enum(['automatic', 'browser', 'offline-wasm', 'provider'])
-      .optional(),
+    streamResults: z.boolean().optional(),
+    // Read the previous key once so existing installations keep their choice.
     streamExplanations: z.boolean().optional(),
     historyEnabled: z.boolean().optional(),
     savePageDetails: z.boolean().optional(),
@@ -73,10 +64,10 @@ export function parseSettings(value: unknown): AppSettings {
 
   return {
     providers,
-    translationMode:
-      parsed.data.translationMode ?? DEFAULT_SETTINGS.translationMode,
-    streamExplanations:
-      parsed.data.streamExplanations ?? DEFAULT_SETTINGS.streamExplanations,
+    streamResults:
+      parsed.data.streamResults ??
+      parsed.data.streamExplanations ??
+      DEFAULT_SETTINGS.streamResults,
     historyEnabled:
       parsed.data.historyEnabled ?? DEFAULT_SETTINGS.historyEnabled,
     savePageDetails:

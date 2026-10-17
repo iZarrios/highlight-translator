@@ -8,6 +8,3 @@ test-results/
 .env
 .env.*
 !.env.example
-public/offline/transformers.min.js
-public/offline/wasm/
-public/offline-models/

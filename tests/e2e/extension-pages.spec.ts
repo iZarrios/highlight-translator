@@ -11,16 +11,15 @@ test('settings page exposes provider and privacy controls', async ({
     page.getByRole('heading', { name: 'Highlight Translator' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Explanation providers' }),
+    page.getByRole('heading', { name: 'AI providers' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('checkbox', { name: /Stream explanations/ }),
+    page.getByRole('checkbox', { name: /Stream AI results/ }),
   ).toBeChecked();
   await expect(
     page.getByRole('checkbox', { name: /Save page title and URL/ }),
   ).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'Load models' })).toBeVisible();
-  await expect(page.getByLabel('Translation engine')).toHaveValue('automatic');
   await expect(page.getByLabel('Model')).toHaveAttribute(
     'placeholder',
     /Select Load models/,

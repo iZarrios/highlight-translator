@@ -6,7 +6,6 @@ import type {
   ExplanationCancel,
   ExplanationServerMessage,
   ExplanationStart,
-  OfflineHostResponse,
   RuntimeRequest,
   RuntimeResponse,
 } from '@/messaging/protocol';
@@ -17,57 +16,19 @@ import {
 } from '@/providers/provider-profile';
 import { activeProvider } from '@/settings/settings';
 import { settingsRepository } from '@/settings/settings-repository';
-import { OpenAITranslator } from '@/translation/openai-translator';
 
 const history = createHistoryRepository();
-const OFFSCREEN_PATH = '/offscreen.html';
-let creatingOffscreenDocument: Promise<void> | undefined;
 const runtimeRequestTypes = new Set<RuntimeRequest['type']>([
   'lookup:config',
   'settings:get',
   'settings:set',
   'provider:test',
-  'translation:offline',
-  'translation:provider',
   'history:add',
   'history:list',
   'history:favorite',
   'history:remove',
   'history:clear',
 ]);
-
-async function ensureOffscreenDocument(): Promise<void> {
-  const documentUrl = browser.runtime.getURL(OFFSCREEN_PATH);
-  const contexts = await browser.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
-    documentUrls: [documentUrl],
-  });
-  if (contexts.length > 0) return;
-
-  creatingOffscreenDocument ??= browser.offscreen
-    .createDocument({
-      url: OFFSCREEN_PATH,
-      reasons: ['WORKERS'],
-      justification:
-        'Keep one fully local translation model loaded for all browser tabs.',
-    })
-    .finally(() => {
-      creatingOffscreenDocument = undefined;
-    });
-  await creatingOffscreenDocument;
-}
-
-async function translateOffline(text: string) {
-  await ensureOffscreenDocument();
-  const response = (await browser.runtime.sendMessage({
-    target: 'offscreen',
-    type: 'offline:translate',
-    text,
-  })) as OfflineHostResponse | undefined;
-  if (!response) throw new Error('The offline translation host did not reply.');
-  if (response.ok) return response.value;
-  throw new Error(response.error);
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof DOMException && error.name === 'AbortError')
@@ -83,7 +44,6 @@ async function handleRequest(request: RuntimeRequest): Promise<unknown> {
       const settings = await settingsRepository.get();
       const provider = activeProvider(settings);
       return {
-        translationMode: settings.translationMode,
         historyEnabled: settings.historyEnabled,
         savePageDetails: settings.savePageDetails,
         ...(provider
@@ -112,21 +72,6 @@ async function handleRequest(request: RuntimeRequest): Promise<unknown> {
         AbortSignal.timeout(10_000),
       );
       return { latencyMs: Math.round(performance.now() - startedAt), models };
-    }
-    case 'translation:offline':
-      return translateOffline(request.text);
-    case 'translation:provider': {
-      const settings = await settingsRepository.get();
-      const provider = activeProvider(settings);
-      if (!provider) {
-        throw new Error('Configure and select a translation provider first.');
-      }
-      const detection = await browser.i18n.detectLanguage(request.text);
-      const sourceLanguage = detection.languages[0]?.language ?? 'unknown';
-      return new OpenAITranslator(provider).translateToEnglish(
-        request.text,
-        sourceLanguage,
-      );
     }
     case 'history:add': {
       const settings = await settingsRepository.get();
@@ -195,9 +140,7 @@ export default defineBackground(() => {
           const settings = await settingsRepository.get();
           const provider = activeProvider(settings);
           if (!provider)
-            throw new Error(
-              'Configure and select an explanation provider first.',
-            );
+            throw new Error('Configure and select an AI provider first.');
           const client = new OpenAIExplanationClient(provider);
           const request = {
             text: message.text,
@@ -206,16 +149,32 @@ export default defineBackground(() => {
               : {}),
           };
 
-          if (settings.streamExplanations) {
-            for await (const text of client.streamExplanation(
+          if (settings.streamResults) {
+            for await (const chunk of client.streamExplanation(
               request,
               controller.signal,
             )) {
-              post({ type: 'chunk', requestId: message.requestId, text });
+              post({
+                type: 'chunk',
+                requestId: message.requestId,
+                field: chunk.field,
+                text: chunk.text,
+              });
             }
           } else {
-            const text = await client.explain(request, controller.signal);
-            post({ type: 'chunk', requestId: message.requestId, text });
+            const result = await client.explain(request, controller.signal);
+            post({
+              type: 'chunk',
+              requestId: message.requestId,
+              field: 'translation',
+              text: result.translation,
+            });
+            post({
+              type: 'chunk',
+              requestId: message.requestId,
+              field: 'explanation',
+              text: result.explanation,
+            });
           }
           post({ type: 'done', requestId: message.requestId });
         } catch (error) {

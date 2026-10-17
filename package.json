@@ -8,6 +8,7 @@
     "postinstall": "wxt prepare",
     "dev": "wxt",
     "build": "wxt build",
+    "build:dev": "wxt build --mode development",
     "zip": "wxt zip",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
@@ -19,10 +20,7 @@
     "test:e2e:headed": "pnpm build && playwright test --project=chromium-extension --headed",
     "test:e2e:debug": "pnpm build && playwright test --project=chromium-extension --debug",
     "test:server": "node tests/support/test-server.mjs",
-    "test:chrome-ai": "playwright test --project=chrome-ai",
     "test:install": "playwright install --no-shell chromium",
-    "offline:model:install": "node scripts/install-offline-model.mjs",
-    "offline:runtime:install": "node scripts/install-offline-model.mjs --runtime-only",
     "check": "pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:e2e && pnpm zip"
   },
   "dependencies": {

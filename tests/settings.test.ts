@@ -4,18 +4,17 @@ import { parseSettings } from '@/settings/settings';
 describe('settings', () => {
   it('uses privacy-preserving defaults', () => {
     expect(parseSettings(undefined)).toMatchObject({
-      translationMode: 'automatic',
-      streamExplanations: true,
+      streamResults: true,
       historyEnabled: true,
       savePageDetails: false,
       retentionLimit: 1_000,
     });
   });
 
-  it('preserves an explicit local translation mode', () => {
-    expect(parseSettings({ translationMode: 'offline-wasm' })).toMatchObject({
-      translationMode: 'offline-wasm',
-    });
+  it('migrates the previous streaming preference', () => {
+    expect(parseSettings({ streamExplanations: false }).streamResults).toBe(
+      false,
+    );
   });
 
   it('repairs a removed active provider reference', () => {

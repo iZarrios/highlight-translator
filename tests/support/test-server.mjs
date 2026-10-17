@@ -59,19 +59,30 @@ const server = createServer(async (request, response) => {
         'cache-control': 'no-cache',
         'access-control-allow-origin': '*',
       });
+      const event = (content) =>
+        `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
       response.write(
-        'data: {"choices":[{"delta":{"content":"A deterministic "}}]}\n\n',
+        event(
+          '{"translation":"A deterministic translation.","explanation":"A deterministic ',
+        ),
       );
       setTimeout(() => {
-        response.write(
-          'data: {"choices":[{"delta":{"content":"test explanation."}}]}\n\n',
-        );
+        response.write(event('test explanation."}'));
         response.end('data: [DONE]\n\n');
       }, 20);
       return;
     }
     return json(response, 200, {
-      choices: [{ message: { content: 'A deterministic test explanation.' } }],
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              translation: 'A deterministic translation.',
+              explanation: 'A deterministic test explanation.',
+            }),
+          },
+        },
+      ],
     });
   }
   return json(response, 404, { error: { message: 'fixture route not found' } });

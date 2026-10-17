@@ -9,18 +9,12 @@ import type {
   ProviderInput,
 } from '@/providers/provider-profile';
 import type { AppSettings } from '@/settings/settings';
-import type {
-  OfflineTranslation,
-  TranslationResult,
-} from '@/translation/translator';
 
 export type RuntimeRequest =
   | { type: 'lookup:config' }
   | { type: 'settings:get' }
   | { type: 'settings:set'; settings: AppSettings }
   | { type: 'provider:test'; provider: ProviderInput }
-  | { type: 'translation:offline'; text: string }
-  | { type: 'translation:provider'; text: string }
   | { type: 'history:add'; entry: NewHistoryEntry }
   | { type: 'history:list'; query?: HistoryQuery }
   | { type: 'history:favorite'; id: string; favorite: boolean }
@@ -36,8 +30,6 @@ export type RuntimeResponseMap = {
   'settings:get': AppSettings;
   'settings:set': AppSettings;
   'provider:test': { latencyMs: number; models: string[] };
-  'translation:offline': OfflineTranslation;
-  'translation:provider': TranslationResult;
   'history:add': HistoryEntry | undefined;
   'history:list': HistoryEntry[];
   'history:favorite': undefined;
@@ -46,7 +38,6 @@ export type RuntimeResponseMap = {
 };
 
 export type LookupConfig = {
-  translationMode: AppSettings['translationMode'];
   historyEnabled: boolean;
   savePageDetails: boolean;
   provider?: {
@@ -64,18 +55,15 @@ export type ExplanationStart = {
   nearbyContext?: string;
 };
 
-export type OfflineHostRequest = {
-  target: 'offscreen';
-  type: 'offline:translate';
-  text: string;
-};
-
-export type OfflineHostResponse = RuntimeResponse<OfflineTranslation>;
-
 export type ExplanationCancel = { type: 'cancel'; requestId: string };
 
 export type ExplanationServerMessage =
-  | { type: 'chunk'; requestId: string; text: string }
+  | {
+      type: 'chunk';
+      requestId: string;
+      field: 'translation' | 'explanation';
+      text: string;
+    }
   | { type: 'done'; requestId: string }
   | { type: 'error'; requestId: string; error: string };
 

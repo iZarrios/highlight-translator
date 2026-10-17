@@ -57,7 +57,7 @@ function ProviderList({
   if (settings.providers.length === 0) {
     return (
       <div className="rounded-xl bg-muted px-4 py-5 text-center text-sm text-muted-foreground">
-        No provider configured yet. Translation still works on-device.
+        Add a provider to translate and explain highlighted text.
       </div>
     );
   }
@@ -193,8 +193,7 @@ export function ProviderSettings({
         : settings.activeProviderId;
     await persist({
       providers,
-      translationMode: settings.translationMode,
-      streamExplanations: settings.streamExplanations,
+      streamResults: settings.streamResults,
       historyEnabled: settings.historyEnabled,
       savePageDetails: settings.savePageDetails,
       retentionLimit: settings.retentionLimit,
@@ -212,7 +211,7 @@ export function ProviderSettings({
 
   return (
     <section className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">Explanation providers</h2>
+      <h2 className="text-lg font-semibold">AI providers</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Add any HTTP or HTTPS server implementing the OpenAI Chat Completions
         interface.

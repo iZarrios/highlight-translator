@@ -20,8 +20,10 @@ test('highlighting page text opens an isolated lookup card', async ({
   });
   await expect(card).toBeVisible();
   await expect(card).toContainText('once in a blue moon');
-  await expect(card).toContainText('Translation · On-device');
+  await expect(card).toContainText('Translation · Configured AI');
+  await expect(card).toContainText('A deterministic translation.');
   await expect(card).toContainText('Explanation · Configured AI');
+  await expect(card).toContainText('A deterministic test explanation.');
 });
 
 test('Escape closes the lookup card', async ({ context }) => {

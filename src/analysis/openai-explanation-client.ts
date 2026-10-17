@@ -1,7 +1,11 @@
 import type {
+  ExplanationChunk,
   ExplanationClient,
+  ExplanationField,
   ExplanationRequest,
+  ExplanationResult,
 } from '@/analysis/explanation-client';
+import { explanationResultSchema } from '@/analysis/explanation-client';
 import { buildExplanationMessages } from '@/analysis/prompt';
 import { extensionFetch, type Fetcher } from '@/lib/extension-fetch';
 import type { ProviderProfile } from '@/providers/provider-profile';
@@ -37,16 +41,38 @@ const responseError = async (response: Response): Promise<Error> => {
   return new Error(`Explanation request failed: ${detail}`);
 };
 
+const explanationResponseFormat = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'translated_explanation',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        translation: { type: 'string', minLength: 1 },
+        explanation: { type: 'string', minLength: 1 },
+      },
+      required: ['translation', 'explanation'],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 function getCompletionRequestBody(
   provider: ProviderProfile,
   request: ExplanationRequest,
   isStreaming: boolean,
 ) {
+  const maxTokens = Math.min(
+    1_600,
+    Math.max(220, Math.ceil(request.text.length / 2) + 160),
+  );
   return JSON.stringify({
     model: provider.model,
     messages: buildExplanationMessages(request),
-    temperature: 0.2,
-    max_tokens: 180,
+    response_format: explanationResponseFormat,
+    temperature: 0,
+    max_tokens: maxTokens,
     stream: isStreaming,
   });
 }
@@ -60,6 +86,97 @@ function getContentFromCompletion(value: unknown): string {
     throw new Error('The provider returned an empty or invalid explanation.');
   }
   return content.trim();
+}
+
+function parseResult(content: string): ExplanationResult {
+  try {
+    return explanationResultSchema.parse(JSON.parse(content));
+  } catch {
+    throw new Error(
+      'The provider returned invalid structured translation and explanation JSON.',
+    );
+  }
+}
+
+const escapeValues: Record<string, string> = {
+  '"': '"',
+  '\\': '\\',
+  '/': '/',
+  b: '\b',
+  f: '\f',
+  n: '\n',
+  r: '\r',
+  t: '\t',
+};
+
+/** Decodes the valid prefix of one JSON string while its response is streaming. */
+function readStringPrefix(
+  json: string,
+  field: ExplanationField,
+): string | undefined {
+  const match = new RegExp(`"${field}"\\s*:\\s*"`).exec(json);
+  if (!match) return undefined;
+
+  let value = '';
+  let index = match.index + match[0].length;
+  while (index < json.length) {
+    const character = json[index];
+    if (character === '"') return value;
+    if (character !== '\\') {
+      value += character;
+      index += 1;
+      continue;
+    }
+
+    const escapeCode = json[index + 1];
+    if (!escapeCode) return value;
+    if (escapeCode === 'u') {
+      const hex = json.slice(index + 2, index + 6);
+      if (hex.length < 4) return value;
+      if (!/^[\da-f]{4}$/i.test(hex)) return value;
+      value += String.fromCharCode(Number.parseInt(hex, 16));
+      index += 6;
+      continue;
+    }
+
+    const decoded = escapeValues[escapeCode];
+    if (decoded === undefined) return value;
+    value += decoded;
+    index += 2;
+  }
+  return value;
+}
+
+async function* structuredChunks(
+  rawChunks: AsyncIterable<string>,
+): AsyncIterable<ExplanationChunk> {
+  let json = '';
+  const emitted: Record<ExplanationField, string> = {
+    translation: '',
+    explanation: '',
+  };
+  const fields: ExplanationField[] = ['translation', 'explanation'];
+
+  for await (const rawChunk of rawChunks) {
+    json += rawChunk;
+    for (const field of fields) {
+      const value = readStringPrefix(json, field);
+      if (value === undefined || !value.startsWith(emitted[field])) continue;
+      const text = value.slice(emitted[field].length);
+      if (!text) continue;
+      emitted[field] = value;
+      yield { field, text };
+    }
+  }
+
+  const result = parseResult(json);
+  for (const field of fields) {
+    if (!result[field].startsWith(emitted[field])) {
+      throw new Error('The streamed structured response changed unexpectedly.');
+    }
+    const text = result[field].slice(emitted[field].length);
+    if (text) yield { field, text };
+  }
 }
 
 function contentFromEvent(value: unknown): string {
@@ -118,7 +235,7 @@ export class OpenAIExplanationClient implements ExplanationClient {
   async explain(
     request: ExplanationRequest,
     signal?: AbortSignal,
-  ): Promise<string> {
+  ): Promise<ExplanationResult> {
     const response = await this.fetcher(
       resolveOpenAIUrl(this.provider.baseUrl, 'chat/completions'),
       {
@@ -129,13 +246,13 @@ export class OpenAIExplanationClient implements ExplanationClient {
       },
     );
     if (!response.ok) throw await responseError(response);
-    return getContentFromCompletion(await response.json());
+    return parseResult(getContentFromCompletion(await response.json()));
   }
 
   async *streamExplanation(
     request: ExplanationRequest,
     signal?: AbortSignal,
-  ): AsyncIterable<string> {
+  ): AsyncIterable<ExplanationChunk> {
     const response = await this.fetcher(
       resolveOpenAIUrl(this.provider.baseUrl, 'chat/completions'),
       {
@@ -147,9 +264,13 @@ export class OpenAIExplanationClient implements ExplanationClient {
     );
     if (!response.ok) throw await responseError(response);
     if (!response.headers.get('content-type')?.includes('text/event-stream')) {
-      yield getContentFromCompletion(await response.json());
+      const result = parseResult(
+        getContentFromCompletion(await response.json()),
+      );
+      yield { field: 'translation', text: result.translation };
+      yield { field: 'explanation', text: result.explanation };
       return;
     }
-    yield* readServerSentEvents(response);
+    yield* structuredChunks(readServerSentEvents(response));
   }
 }

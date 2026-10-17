@@ -20,12 +20,6 @@ export default defineConfig({
     {
       name: 'chromium-extension',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /chrome-ai\.spec\.ts/,
-    },
-    {
-      name: 'chrome-ai',
-      use: { channel: 'chrome', ...devices['Desktop Chrome'] },
-      testMatch: /chrome-ai\.spec\.ts/,
     },
   ],
 });

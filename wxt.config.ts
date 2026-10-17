@@ -7,13 +7,9 @@ export default defineConfig({
   manifest: {
     name: 'Highlight Translator',
     description:
-      'Translate highlighted text on-device and explain it with your chosen AI.',
+      'Translate and explain highlighted text with your chosen AI provider.',
     minimum_chrome_version: '138',
-    permissions: ['activeTab', 'offscreen', 'storage', 'sidePanel'],
-    content_security_policy: {
-      extension_pages:
-        "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
-    },
+    permissions: ['activeTab', 'storage', 'sidePanel'],
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     action: {
       default_title: 'Open translation history',
