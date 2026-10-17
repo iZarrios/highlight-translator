@@ -162,11 +162,14 @@ export function HistoryApp() {
     <main className="min-h-screen bg-background p-3 font-sans text-foreground">
       <header className="sticky top-0 z-10 -mx-3 -mt-3 border-b border-border bg-background/95 px-3 pb-3 pt-4 backdrop-blur">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Lookup history</h1>
-            <p className="text-xs text-muted-foreground">
-              {entries.length} saved entries · local only
-            </p>
+          <div className="flex items-center gap-2.5">
+            <img src="/icons/icon-32.png" alt="" className="size-8" />
+            <div>
+              <h1 className="text-lg font-semibold">Lookup history</h1>
+              <p className="text-xs text-muted-foreground">
+                {entries.length} saved entries · local only
+              </p>
+            </div>
           </div>
           <div className="flex">
             <Button

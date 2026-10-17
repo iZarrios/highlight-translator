@@ -58,9 +58,7 @@ export function OptionsApp() {
     <main className="min-h-screen bg-background px-5 py-10 font-sans text-foreground">
       <div className="mx-auto max-w-3xl">
         <header className="mb-8">
-          <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <span className="text-xl">Aa</span>
-          </div>
+          <img src="/icons/icon-48.png" alt="" className="mb-3 size-12" />
           <h1 className="text-3xl font-semibold tracking-tight">
             Highlight Translator
           </h1>

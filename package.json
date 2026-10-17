@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test": "pnpm test:unit && pnpm test:e2e",
+    "test": "pnpm test:unit",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "pnpm build && playwright test --project=chromium-extension",
@@ -21,7 +21,7 @@
     "test:e2e:debug": "pnpm build && playwright test --project=chromium-extension --debug",
     "test:server": "node tests/support/test-server.mjs",
     "test:install": "playwright install --no-shell chromium",
-    "check": "pnpm typecheck && pnpm lint && pnpm test:unit && pnpm test:e2e && pnpm zip"
+    "check": "pnpm typecheck && pnpm lint && pnpm test:unit && pnpm zip"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

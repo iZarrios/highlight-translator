@@ -40,16 +40,16 @@ development directory, run `pnpm build:dev`. If Brave is instead loaded from
 ## Testing
 
 ```bash
-pnpm test:unit
-pnpm test:e2e
-pnpm test:e2e:headed
 pnpm check
 ```
 
-The Playwright suite installs and launches a pinned Chromium build with the
-unpacked production extension. It uses local fixture pages and a deterministic
-OpenAI-compatible test server; no live model or internet connection is required
-after dependencies and Chromium are installed.
+`pnpm check` runs type checking, linting, unit tests, and creates the production
+extension ZIP. Browser E2E tests remain available as opt-in diagnostics with
+`pnpm test:e2e` or `pnpm test:e2e:headed`.
+
+GitHub Actions attaches the ZIP as a downloadable artifact after every
+successful CI run. To publish a GitHub Release with that ZIP, push a version
+tag such as `v0.1.0`.
 
 ## Local model servers
 

@@ -1,5 +1,34 @@
 import { expect, test } from '@@/tests/e2e/extension-fixture';
 
+test.beforeEach(async ({ context, extensionId }) => {
+  const extensionPage = await context.newPage();
+  await extensionPage.goto(`chrome-extension://${extensionId}/options.html`);
+  const response = await extensionPage.evaluate(() =>
+    chrome.runtime.sendMessage({
+      type: 'settings:set',
+      settings: {
+        providers: [
+          {
+            id: 'fixture-provider',
+            name: 'Test provider',
+            baseUrl: 'http://127.0.0.1:4173/v1',
+            model: 'fixture-model',
+            enabled: true,
+            originPermission: 'http://127.0.0.1:4173/*',
+          },
+        ],
+        activeProviderId: 'fixture-provider',
+        streamResults: true,
+        historyEnabled: false,
+        savePageDetails: false,
+        retentionLimit: 100,
+      },
+    }),
+  );
+  expect(response).toMatchObject({ ok: true });
+  await extensionPage.close();
+});
+
 test('highlighting page text opens an isolated lookup card', async ({
   context,
 }) => {
@@ -20,9 +49,9 @@ test('highlighting page text opens an isolated lookup card', async ({
   });
   await expect(card).toBeVisible();
   await expect(card).toContainText('once in a blue moon');
-  await expect(card).toContainText('Translation · Configured AI');
+  await expect(card).toContainText('Translation · This device · Test provider');
   await expect(card).toContainText('A deterministic translation.');
-  await expect(card).toContainText('Explanation · Configured AI');
+  await expect(card).toContainText('Explanation · This device · Test provider');
   await expect(card).toContainText('A deterministic test explanation.');
 });
 
