@@ -71,6 +71,9 @@ function getCompletionRequestBody(
     model: provider.model,
     messages: buildExplanationMessages(request),
     response_format: explanationResponseFormat,
+    // we disable thinking as most of the time the use case is too simple to need any reasoning
+    reasoning_effort: 'none',
+    thinking_budget_tokens: 0,
     temperature: 0,
     max_tokens: maxTokens,
     stream: isStreaming,

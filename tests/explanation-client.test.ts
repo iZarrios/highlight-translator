@@ -58,6 +58,8 @@ describe('OpenAIExplanationClient', () => {
       client.explain({ text: 'once in a blue moon' }),
     ).resolves.toEqual(result);
     expect(requestBody?.max_tokens).toBeLessThanOrEqual(220);
+    expect(requestBody?.reasoning_effort).toBe('none');
+    expect(requestBody?.thinking_budget_tokens).toBe(0);
     expect(requestBody?.response_format).toEqual({
       type: 'json_schema',
       json_schema: expect.objectContaining({
