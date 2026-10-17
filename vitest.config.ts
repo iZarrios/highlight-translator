@@ -1,0 +1,29 @@
+import { fileURLToPath } from 'node:url';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: [
+      { find: '@@', replacement: fileURLToPath(new URL('.', import.meta.url)) },
+      {
+        find: '@',
+        replacement: fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    ],
+  },
+  test: {
+    environment: 'jsdom',
+    exclude: ['tests/e2e/**', 'node_modules/**', '.output/**'],
+    setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      reporter: ['text', 'html'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/analysis/**/*.ts',
+        'src/history/**/*.ts',
+      ],
+    },
+  },
+});

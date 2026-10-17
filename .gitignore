@@ -1,0 +1,13 @@
+node_modules/
+.output/
+.wxt/
+coverage/
+playwright-report/
+test-results/
+*.zip
+.env
+.env.*
+!.env.example
+public/offline/transformers.min.js
+public/offline/wasm/
+public/offline-models/
