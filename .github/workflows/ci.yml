@@ -30,6 +30,7 @@ jobs:
         with:
           name: highlight-translator-${{ github.sha }}
           path: .output/*.zip
+          include-hidden-files: true
           if-no-files-found: error
 
   release:
