@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRectangleVisible, positionCard } from '@/selection/position-card';
+import { isRectangleVisible, positionCard } from '@/ui/position-card';
 
 describe('positionCard', () => {
   it('centers below a selection when there is room', () => {

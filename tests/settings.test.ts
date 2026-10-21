@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSettings } from '@/settings/settings';
+import { parseSettings } from '@/settings';
 
 describe('settings', () => {
   it('uses privacy-preserving defaults', () => {

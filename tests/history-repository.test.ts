@@ -1,9 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createHistoryRepository,
-  deleteHistoryDatabase,
-} from '@/history/history-repository';
+import { createHistoryRepository, deleteHistoryDatabase } from '@/history';
 
 describe('history repository', () => {
   afterEach(() => deleteHistoryDatabase());

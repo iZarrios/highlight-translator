@@ -3,7 +3,7 @@ import {
   classifyEndpoint,
   createProviderProfile,
   resolveOpenAIUrl,
-} from '@/providers/provider-profile';
+} from '@/provider-profile';
 
 describe('provider profiles', () => {
   it('accepts an arbitrary local OpenAI-compatible base URL', () => {

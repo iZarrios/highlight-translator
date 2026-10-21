@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useLookupStore } from '@/entrypoints/highlight.content/store';
-import type { SelectionSnapshot } from '@/selection/read-selection';
+import { useLookupStore } from '@/lookup-store';
+import type { SelectionSnapshot } from '@/read-selection';
 
 const selection = (): SelectionSnapshot => ({
   text: 'bonjour',

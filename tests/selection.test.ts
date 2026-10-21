@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readSelection } from '@/selection/read-selection';
+import { readSelection } from '@/read-selection';
 
 describe('readSelection', () => {
   it('returns selected text, nearby context, and the range rectangle', () => {

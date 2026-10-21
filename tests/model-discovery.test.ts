@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { discoverModels } from '@/providers/model-discovery';
-import { createProviderProfile } from '@/providers/provider-profile';
+import { discoverModels } from '@/model-discovery';
+import { createProviderProfile } from '@/provider-profile';
 
 const provider = createProviderProfile({
   name: 'Fixture',

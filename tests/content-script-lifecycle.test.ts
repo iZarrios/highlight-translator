@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 describe('content-script lookup lifecycle', () => {
   it('does not dismiss an open lookup when the user scrolls', async () => {
     const contentScript = await readFile(
-      'src/entrypoints/highlight.content/index.tsx',
+      'src/ui/entrypoints/highlight.content/index.tsx',
       'utf8',
     );
 
@@ -13,7 +13,7 @@ describe('content-script lookup lifecycle', () => {
     );
 
     const lookupCard = await readFile(
-      'src/entrypoints/highlight.content/lookup-card.tsx',
+      'src/ui/entrypoints/highlight.content/lookup-card.tsx',
       'utf8',
     );
     expect(lookupCard).toMatch(/addEventListener\(\s*['"]scroll['"]/);
