@@ -28,7 +28,7 @@ const rainExplanation =
   '"Il pleut des cordes" is a French idiom for very heavy rain, like "raining cats and dogs". The rain is why the lakeside picnic was cancelled.';
 // What LFM2.5-24B-A2B answered for the rain sentence, including two made-up
 // values ("il a", "et") that the client must drop.
-const rainAlignment = {
+const rainWordMapping = {
   It: 'Il pleut',
   has: 'il a',
   been: 'été',
@@ -48,10 +48,10 @@ const rainAlignment = {
   lake: 'lac',
 };
 
-function alignmentAnswer(input) {
+function wordMappingAnswer(input) {
   const keys = input.response_format.json_schema.schema.required;
   return Object.fromEntries(
-    keys.map((key) => [key, rainAlignment[key.replace(/^\d+ /, '')] ?? '']),
+    keys.map((key) => [key, rainWordMapping[key.replace(/^\d+ /, '')] ?? '']),
   );
 }
 
@@ -90,10 +90,10 @@ const server = createServer(async (request, response) => {
     const isRain = input.messages.some((message) =>
       message.content.includes('Il pleut des cordes'),
     );
-    if (input.response_format?.json_schema?.name === 'alignment') {
+    if (input.response_format?.json_schema?.name === 'word-mapping') {
       return json(response, 200, {
         choices: [
-          { message: { content: JSON.stringify(alignmentAnswer(input)) } },
+          { message: { content: JSON.stringify(wordMappingAnswer(input)) } },
         ],
       });
     }

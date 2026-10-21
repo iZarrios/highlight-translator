@@ -1,5 +1,5 @@
-import type { AlignmentRequest } from '@/analysis/alignment';
 import type { ExplanationRequest } from '@/analysis/explanation-client';
+import type { WordMappingRequest } from '@/analysis/word-mapping';
 
 const MAX_SELECTION_LENGTH = 4_000;
 const MAX_CONTEXT_LENGTH = 1_500;
@@ -38,7 +38,7 @@ export function buildExplanationMessages(request: ExplanationRequest) {
   ];
 }
 
-export function buildAlignmentMessages(request: AlignmentRequest) {
+export function buildWordMappingMessages(request: WordMappingRequest) {
   return [
     {
       role: 'system' as const,

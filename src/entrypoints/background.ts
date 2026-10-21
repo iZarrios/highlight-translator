@@ -136,7 +136,7 @@ export default defineBackground(() => {
 
         const controller = new AbortController();
         controllers.set(message.requestId, controller);
-        let alignment: Promise<void> | undefined;
+        let wordMapping: Promise<void> | undefined;
         try {
           const settings = await settingsRepository.get();
           const provider = activeProvider(settings);
@@ -151,12 +151,12 @@ export default defineBackground(() => {
           };
           // The mapping only needs the final translation, so it runs while
           // the explanation is still being generated.
-          const startAlignment = (translation: string) => {
-            alignment ??= client
-              .align({ text: message.text, translation }, controller.signal)
+          const startWordMapping = (translation: string) => {
+            wordMapping ??= client
+              .mapWords({ text: message.text, translation }, controller.signal)
               .then((groups) =>
                 post({
-                  type: 'alignment',
+                  type: 'word-mapping',
                   requestId: message.requestId,
                   groups,
                 }),
@@ -164,7 +164,7 @@ export default defineBackground(() => {
               .catch((error: unknown) => {
                 if (controller.signal.aborted) return;
                 post({
-                  type: 'alignment-error',
+                  type: 'word-mapping-error',
                   requestId: message.requestId,
                   error: errorMessage(error),
                 });
@@ -178,7 +178,7 @@ export default defineBackground(() => {
               controller.signal,
             )) {
               if (chunk.field === 'translation') translation += chunk.text;
-              else if (translation) startAlignment(translation);
+              else if (translation) startWordMapping(translation);
               post({
                 type: 'chunk',
                 requestId: message.requestId,
@@ -186,10 +186,10 @@ export default defineBackground(() => {
                 text: chunk.text,
               });
             }
-            if (translation) startAlignment(translation);
+            if (translation) startWordMapping(translation);
           } else {
             const result = await client.explain(request, controller.signal);
-            startAlignment(result.translation);
+            startWordMapping(result.translation);
             post({
               type: 'chunk',
               requestId: message.requestId,
@@ -213,7 +213,7 @@ export default defineBackground(() => {
             });
           }
         } finally {
-          await alignment;
+          await wordMapping;
           controllers.delete(message.requestId);
         }
       },

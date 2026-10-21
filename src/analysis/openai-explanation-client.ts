@@ -1,13 +1,3 @@
-import {
-  type AlignedGroup,
-  type AlignmentRequest,
-  alignmentKeys,
-  alignmentResponseSchema,
-  alignmentSchema,
-  MAX_ALIGNMENT_WORDS,
-  resolveAlignment,
-  splitWords,
-} from '@/analysis/alignment';
 import type {
   ExplanationChunk,
   ExplanationClient,
@@ -17,9 +7,19 @@ import type {
 } from '@/analysis/explanation-client';
 import { explanationResultSchema } from '@/analysis/explanation-client';
 import {
-  buildAlignmentMessages,
   buildExplanationMessages,
+  buildWordMappingMessages,
 } from '@/analysis/prompt';
+import {
+  MAX_MAPPED_WORDS,
+  resolveWordMapping,
+  splitWords,
+  type WordGroup,
+  type WordMappingRequest,
+  wordKeys,
+  wordMappingResponseSchema,
+  wordMappingSchema,
+} from '@/analysis/word-mapping';
 import { extensionFetch, type Fetcher } from '@/lib/extension-fetch';
 import type { ProviderProfile } from '@/providers/provider-profile';
 import { resolveOpenAIUrl } from '@/providers/provider-profile';
@@ -269,14 +269,14 @@ export class OpenAIExplanationClient implements ExplanationClient {
     return parseResult(getContentFromCompletion(await response.json()));
   }
 
-  async align(
-    request: AlignmentRequest,
+  async mapWords(
+    request: WordMappingRequest,
     signal?: AbortSignal,
-  ): Promise<AlignedGroup[]> {
+  ): Promise<WordGroup[]> {
     const words = splitWords(request.translation);
     if (
       words.length === 0 ||
-      words.length > MAX_ALIGNMENT_WORDS ||
+      words.length > MAX_MAPPED_WORDS ||
       request.translation.trim() === request.text.trim()
     )
       return [];
@@ -288,13 +288,13 @@ export class OpenAIExplanationClient implements ExplanationClient {
         headers: requestHeaders(this.provider),
         body: JSON.stringify({
           model: this.provider.model,
-          messages: buildAlignmentMessages(request),
+          messages: buildWordMappingMessages(request),
           response_format: {
             type: 'json_schema',
             json_schema: {
-              name: 'alignment',
+              name: 'word-mapping',
               strict: true,
-              schema: alignmentSchema(alignmentKeys(words)),
+              schema: wordMappingSchema(wordKeys(words)),
             },
           },
           ...THINKING_OFF,
@@ -310,11 +310,11 @@ export class OpenAIExplanationClient implements ExplanationClient {
     const content = getContentFromCompletion(await response.json());
     let answer: Record<string, string>;
     try {
-      answer = alignmentResponseSchema.parse(JSON.parse(content));
+      answer = wordMappingResponseSchema.parse(JSON.parse(content));
     } catch {
       throw new Error('The provider returned an invalid word mapping.');
     }
-    return resolveAlignment(request.text, words, answer);
+    return resolveWordMapping(request.text, words, answer);
   }
 
   async *streamExplanation(

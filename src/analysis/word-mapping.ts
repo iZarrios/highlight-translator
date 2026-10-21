@@ -1,19 +1,19 @@
 import { z } from 'zod';
 
 /** OpenAI strict structured outputs allow at most 100 object properties. */
-export const MAX_ALIGNMENT_WORDS = 100;
+export const MAX_MAPPED_WORDS = 100;
 
 export type TextSpan = { start: number; end: number };
 
 export type TranslationWord = TextSpan & { word: string };
 
 /** Consecutive translation words and the source span they render, if any. */
-export type AlignedGroup = {
+export type WordGroup = {
   translation: TextSpan;
   source?: TextSpan;
 };
 
-export type AlignmentRequest = {
+export type WordMappingRequest = {
   text: string;
   translation: string;
 };
@@ -30,14 +30,14 @@ export function splitWords(translation: string): TranslationWord[] {
 }
 
 /** Numbered keys make each word unique and keep the model's answer in order. */
-export function alignmentKeys(words: TranslationWord[]): string[] {
+export function wordKeys(words: TranslationWord[]): string[] {
   const width = String(words.length).length;
   return words.map(
     ({ word }, index) => `${String(index + 1).padStart(width, '0')} ${word}`,
   );
 }
 
-export function alignmentSchema(keys: string[]) {
+export function wordMappingSchema(keys: string[]) {
   return {
     type: 'object',
     properties: Object.fromEntries(
@@ -48,7 +48,7 @@ export function alignmentSchema(keys: string[]) {
   } as const;
 }
 
-export const alignmentResponseSchema = z.record(z.string(), z.string());
+export const wordMappingResponseSchema = z.record(z.string(), z.string());
 
 function isWordBoundary(text: string, index: number): boolean {
   return !WORD_CHARACTER.test(text[index] ?? '');
@@ -86,13 +86,13 @@ const sameSpan = (left?: TextSpan, right?: TextSpan) =>
  * verbatim in the source are dropped, and neighbouring words that render the
  * same source span (an idiom) become one group.
  */
-export function resolveAlignment(
+export function resolveWordMapping(
   source: string,
   words: TranslationWord[],
   answer: Record<string, string>,
-): AlignedGroup[] {
-  const keys = alignmentKeys(words);
-  const groups: AlignedGroup[] = [];
+): WordGroup[] {
+  const keys = wordKeys(words);
+  const groups: WordGroup[] = [];
   let cursor = 0;
   let lastMapped = -1;
 

@@ -1,10 +1,10 @@
-import type { AlignedGroup, TextSpan } from '@/analysis/alignment';
+import type { TextSpan, WordGroup } from '@/analysis/word-mapping';
 import { cn } from '@/lib/cn';
 
 type Segment = { text: string; start: number; group?: number };
 
 type ActiveGroupProps = {
-  groups: AlignedGroup[];
+  groups: WordGroup[];
   active: number | undefined;
   onActive(group: number | undefined): void;
 };
@@ -15,7 +15,7 @@ const contains = (outer: TextSpan | undefined, inner: TextSpan) =>
 /** Splits the translation into its word groups and the text between them. */
 function translationSegments(
   translation: string,
-  groups: AlignedGroup[],
+  groups: WordGroup[],
 ): Segment[] {
   const segments: Segment[] = [];
   let cursor = 0;
@@ -93,7 +93,7 @@ export function SourceText({
 }
 
 /** The translation, with every mapped word linked to its source words. */
-export function AlignedTranslation({
+export function MappedTranslation({
   translation,
   groups,
   active,

@@ -184,7 +184,7 @@ describe('OpenAIExplanationClient', () => {
       },
     );
 
-    const groups = await client.align({
+    const groups = await client.mapWords({
       text: 'la voiture rouge',
       translation: 'the red car',
     });
@@ -202,7 +202,7 @@ describe('OpenAIExplanationClient', () => {
       response_format: {
         type: 'json_schema',
         json_schema: {
-          name: 'alignment',
+          name: 'word-mapping',
           strict: true,
           schema: {
             required: ['1 the', '2 red', '3 car'],
@@ -218,10 +218,10 @@ describe('OpenAIExplanationClient', () => {
     const client = new OpenAIExplanationClient(provider, fetcher);
 
     await expect(
-      client.align({ text: 'hello there', translation: 'hello there' }),
+      client.mapWords({ text: 'hello there', translation: 'hello there' }),
     ).resolves.toEqual([]);
     await expect(
-      client.align({ text: 'x', translation: 'word '.repeat(101) }),
+      client.mapWords({ text: 'x', translation: 'word '.repeat(101) }),
     ).resolves.toEqual([]);
     expect(fetcher).not.toHaveBeenCalled();
   });

@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
-  alignmentKeys,
-  resolveAlignment,
+  resolveWordMapping,
   splitWords,
-} from '@/analysis/alignment';
+  wordKeys,
+} from '@/analysis/word-mapping';
 
 const source = 'Il pleut des cordes, alors le chat reste sur le lit.';
 const translation = "It's raining cats and dogs, so the cat stays on the bed.";
 
 function answerFor(values: string[]): Record<string, string> {
-  const keys = alignmentKeys(splitWords(translation));
+  const keys = wordKeys(splitWords(translation));
   return Object.fromEntries(
     keys.map((key, index) => [key, values[index] ?? '']),
   );
 }
 
 function mapped(values: string[]) {
-  return resolveAlignment(
+  return resolveWordMapping(
     source,
     splitWords(translation),
     answerFor(values),
@@ -36,7 +36,7 @@ describe('splitWords', () => {
   });
 
   it('numbers keys so repeated words stay unique', () => {
-    expect(alignmentKeys(splitWords('the cat the dog'))).toEqual([
+    expect(wordKeys(splitWords('the cat the dog'))).toEqual([
       '1 the',
       '2 cat',
       '3 the',
@@ -45,7 +45,7 @@ describe('splitWords', () => {
   });
 });
 
-describe('resolveAlignment', () => {
+describe('resolveWordMapping', () => {
   it('merges an idiom split across words and drops values not in the source', () => {
     expect(
       mapped(['Il', 'pleut', 'des cordes', 'et', 'des cordes', 'alors']).slice(
@@ -82,7 +82,7 @@ describe('resolveAlignment', () => {
       ['the', 'le'],
       ['bed', 'lit'],
     ]);
-    const spans = resolveAlignment(
+    const spans = resolveWordMapping(
       source,
       splitWords(translation),
       answerFor(['il', 'pleut', '', '', '', '', 'le', '', '', '', 'le']),
@@ -93,7 +93,7 @@ describe('resolveAlignment', () => {
   it('only matches whole words', () => {
     // "le" must not match inside "pleut".
     expect(mapped(['', '', '', '', '', '', 'le'])[6]).toEqual(['the', 'le']);
-    const [group] = resolveAlignment('pleut', splitWords('the'), {
+    const [group] = resolveWordMapping('pleut', splitWords('the'), {
       '1 the': 'le',
     });
     expect(group?.source).toBeUndefined();

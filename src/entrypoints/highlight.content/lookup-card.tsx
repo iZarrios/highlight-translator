@@ -10,9 +10,9 @@ import { useEffect, useRef, useState } from 'react';
 import { CollapsibleText } from '@/components/collapsible-text';
 import { Button } from '@/components/ui/button';
 import {
-  AlignedTranslation,
+  MappedTranslation,
   SourceText,
-} from '@/entrypoints/highlight.content/aligned-translation';
+} from '@/entrypoints/highlight.content/mapped-translation';
 import { useLookupStore } from '@/entrypoints/highlight.content/store';
 import {
   type LookupResult,
@@ -87,9 +87,9 @@ export function LookupCard() {
   const [anchorVisible, setAnchorVisible] = useState(true);
   const [activeGroup, setActiveGroup] = useState<number>();
   const groups =
-    result.alignment.status === 'success' &&
-    result.alignment.value.some(({ source }) => source)
-      ? result.alignment.value
+    result.wordMapping.status === 'success' &&
+    result.wordMapping.value.some(({ source }) => source)
+      ? result.wordMapping.value
       : undefined;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset per lookup
@@ -197,7 +197,7 @@ export function LookupCard() {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 {groups ? (
-                  <AlignedTranslation
+                  <MappedTranslation
                     translation={result.translation.value}
                     groups={groups}
                     active={activeGroup}
@@ -208,13 +208,13 @@ export function LookupCard() {
                     {result.translation.value}
                   </p>
                 )}
-                {result.alignment.status === 'loading' &&
+                {result.wordMapping.status === 'loading' &&
                 result.explanation.status !== 'loading' ? (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Mapping words…
                   </p>
                 ) : null}
-                {result.alignment.status === 'error' ? (
+                {result.wordMapping.status === 'error' ? (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Word mapping unavailable.
                   </p>
