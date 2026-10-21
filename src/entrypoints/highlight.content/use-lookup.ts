@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
+import type { WordGroup } from '@/analysis/word-mapping';
 import type { ExplanationServerMessage } from '@/messaging/protocol';
 import { sendRuntimeRequest } from '@/messaging/protocol';
 import type { EndpointLocation } from '@/providers/provider-profile';
@@ -13,12 +14,14 @@ type AsyncValue<T> =
 export type LookupResult = {
   translation: AsyncValue<string>;
   explanation: AsyncValue<string>;
+  wordMapping: AsyncValue<WordGroup[]>;
   provider?: { name: string; model: string; location: EndpointLocation };
 };
 
 const initialResult: LookupResult = {
   translation: { status: 'idle' },
   explanation: { status: 'idle' },
+  wordMapping: { status: 'idle' },
 };
 
 export function useLookup(selection?: SelectionSnapshot): LookupResult {
@@ -40,6 +43,7 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
     setResult({
       translation: { status: 'loading' },
       explanation: { status: 'loading' },
+      wordMapping: { status: 'loading' },
     });
     void configPromise
       .then((config) => {
@@ -75,6 +79,16 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
               explanation: { status: 'success', value: explanationText },
             }));
           }
+        } else if (event.type === 'word-mapping') {
+          setResult((current) => ({
+            ...current,
+            wordMapping: { status: 'success', value: event.groups },
+          }));
+        } else if (event.type === 'word-mapping-error') {
+          setResult((current) => ({
+            ...current,
+            wordMapping: { status: 'error', error: event.error },
+          }));
         } else if (event.type === 'done') {
           if (!translationText || !explanationText) {
             setResult((current) => ({
@@ -103,6 +117,7 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
             ...current,
             translation: { status: 'error', error: event.error },
             explanation: { status: 'error', error: event.error },
+            wordMapping: { status: 'idle' },
           }));
           resolve();
         }

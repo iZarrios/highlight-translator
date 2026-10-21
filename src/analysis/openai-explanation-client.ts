@@ -6,7 +6,20 @@ import type {
   ExplanationResult,
 } from '@/analysis/explanation-client';
 import { explanationResultSchema } from '@/analysis/explanation-client';
-import { buildExplanationMessages } from '@/analysis/prompt';
+import {
+  buildExplanationMessages,
+  buildWordMappingMessages,
+} from '@/analysis/prompt';
+import {
+  MAX_MAPPED_WORDS,
+  resolveWordMapping,
+  splitWords,
+  type WordGroup,
+  type WordMappingRequest,
+  wordKeys,
+  wordMappingResponseSchema,
+  wordMappingSchema,
+} from '@/analysis/word-mapping';
 import { extensionFetch, type Fetcher } from '@/lib/extension-fetch';
 import type { ProviderProfile } from '@/providers/provider-profile';
 import { resolveOpenAIUrl } from '@/providers/provider-profile';
@@ -58,6 +71,12 @@ const explanationResponseFormat = {
   },
 } as const;
 
+// we disable thinking as most of the time the use case is too simple to need any reasoning
+const THINKING_OFF = {
+  reasoning_effort: 'none',
+  thinking_budget_tokens: 0,
+} as const;
+
 function getCompletionRequestBody(
   provider: ProviderProfile,
   request: ExplanationRequest,
@@ -71,9 +90,7 @@ function getCompletionRequestBody(
     model: provider.model,
     messages: buildExplanationMessages(request),
     response_format: explanationResponseFormat,
-    // we disable thinking as most of the time the use case is too simple to need any reasoning
-    reasoning_effort: 'none',
-    thinking_budget_tokens: 0,
+    ...THINKING_OFF,
     temperature: 0,
     max_tokens: maxTokens,
     stream: isStreaming,
@@ -250,6 +267,54 @@ export class OpenAIExplanationClient implements ExplanationClient {
     );
     if (!response.ok) throw await responseError(response);
     return parseResult(getContentFromCompletion(await response.json()));
+  }
+
+  async mapWords(
+    request: WordMappingRequest,
+    signal?: AbortSignal,
+  ): Promise<WordGroup[]> {
+    const words = splitWords(request.translation);
+    if (
+      words.length === 0 ||
+      words.length > MAX_MAPPED_WORDS ||
+      request.translation.trim() === request.text.trim()
+    )
+      return [];
+
+    const response = await this.fetcher(
+      resolveOpenAIUrl(this.provider.baseUrl, 'chat/completions'),
+      {
+        method: 'POST',
+        headers: requestHeaders(this.provider),
+        body: JSON.stringify({
+          model: this.provider.model,
+          messages: buildWordMappingMessages(request),
+          response_format: {
+            type: 'json_schema',
+            json_schema: {
+              name: 'word-mapping',
+              strict: true,
+              schema: wordMappingSchema(wordKeys(words)),
+            },
+          },
+          ...THINKING_OFF,
+          temperature: 0,
+          max_tokens: words.length * 16 + 40,
+          stream: false,
+        }),
+        ...(signal ? { signal } : {}),
+      },
+    );
+    if (!response.ok) throw await responseError(response);
+
+    const content = getContentFromCompletion(await response.json());
+    let answer: Record<string, string>;
+    try {
+      answer = wordMappingResponseSchema.parse(JSON.parse(content));
+    } catch {
+      throw new Error('The provider returned an invalid word mapping.');
+    }
+    return resolveWordMapping(request.text, words, answer);
   }
 
   async *streamExplanation(

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { WordGroup, WordMappingRequest } from '@/analysis/word-mapping';
 
 export type ExplanationRequest = {
   text: string;
@@ -28,4 +29,8 @@ export interface ExplanationClient {
     request: ExplanationRequest,
     signal?: AbortSignal,
   ): AsyncIterable<ExplanationChunk>;
+  mapWords(
+    request: WordMappingRequest,
+    signal?: AbortSignal,
+  ): Promise<WordGroup[]>;
 }

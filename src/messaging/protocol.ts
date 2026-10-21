@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import type { WordGroup } from '@/analysis/word-mapping';
 import type {
   HistoryEntry,
   HistoryQuery,
@@ -65,6 +66,8 @@ export type ExplanationServerMessage =
       text: string;
     }
   | { type: 'done'; requestId: string }
+  | { type: 'word-mapping'; requestId: string; groups: WordGroup[] }
+  | { type: 'word-mapping-error'; requestId: string; error: string }
   | { type: 'error'; requestId: string; error: string };
 
 export async function sendRuntimeRequest<T extends RuntimeRequest>(
