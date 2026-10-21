@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildExplanationMessages } from '@/analysis/prompt';
+import { buildExplanationMessages } from '@/prompt';
 
 describe('translation and explanation prompt', () => {
   it('requests both fields while marking webpage text as untrusted data', () => {

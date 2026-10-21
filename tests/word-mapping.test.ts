@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  resolveWordMapping,
-  splitWords,
-  wordKeys,
-} from '@/analysis/word-mapping';
+import { resolveWordMapping, splitWords, wordKeys } from '@/word-mapping';
 
 const source = 'Il pleut des cordes, alors le chat reste sur le lit.';
 const translation = "It's raining cats and dogs, so the cat stays on the bed.";

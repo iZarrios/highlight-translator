@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { OpenAIExplanationClient } from '@/analysis/openai-explanation-client';
-import { createProviderProfile } from '@/providers/provider-profile';
+import { OpenAIExplanationClient } from '@/openai-explanation-client';
+import { createProviderProfile } from '@/provider-profile';
 
 const provider = createProviderProfile({
   id: 'local',
