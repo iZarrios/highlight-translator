@@ -10,6 +10,7 @@
   --color-primary: #27272a;
   --color-primary-foreground: #fafafa;
   --color-ring: #7c83ff;
+  --color-highlight: rgba(124, 131, 255, 0.24);
   --color-destructive: #d43c3c;
   --font-sans:
     Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -27,6 +28,7 @@
     --color-border: rgba(255, 255, 255, 0.12);
     --color-primary: #f4f4f5;
     --color-primary-foreground: #18181b;
+    --color-highlight: rgba(124, 131, 255, 0.4);
   }
 }
 

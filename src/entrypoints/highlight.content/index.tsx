@@ -38,7 +38,11 @@ export default defineContentScript({
       }, SELECTION_DELAY_MS);
     };
 
-    ctx.addEventListener(document, 'pointerup', showSelection);
+    ctx.addEventListener(document, 'pointerup', (event) => {
+      // Clicks and selections inside the card must not replace the lookup.
+      if (event.composedPath().includes(ui.shadowHost)) return;
+      showSelection();
+    });
     ctx.addEventListener(document, 'keyup', (event) => {
       if (event.key === 'Escape') useLookupStore.getState().close();
       else if (!MODIFIER_KEYS.has(event.key)) showSelection();

@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import type { AlignedGroup } from '@/analysis/alignment';
 import type {
   HistoryEntry,
   HistoryQuery,
@@ -65,6 +66,8 @@ export type ExplanationServerMessage =
       text: string;
     }
   | { type: 'done'; requestId: string }
+  | { type: 'alignment'; requestId: string; groups: AlignedGroup[] }
+  | { type: 'alignment-error'; requestId: string; error: string }
   | { type: 'error'; requestId: string; error: string };
 
 export async function sendRuntimeRequest<T extends RuntimeRequest>(

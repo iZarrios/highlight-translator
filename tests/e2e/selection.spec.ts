@@ -71,3 +71,33 @@ test('Escape closes the lookup card', async ({ context }) => {
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toBeHidden();
 });
+
+test('hovering a translated word highlights its source words', async ({
+  context,
+}) => {
+  const page = await context.newPage();
+  await page.goto('http://127.0.0.1:4173/');
+  await page.locator('#rain').evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+
+  const card = page.getByRole('dialog', {
+    name: 'Translation and explanation',
+  });
+  const source = card.getByTestId('source-text');
+  await expect(source).toBeVisible();
+
+  await card.locator('[data-group]', { hasText: 'cats and dogs' }).hover();
+  await expect(source.locator('.bg-highlight')).toHaveText('des cordes');
+
+  // Clicking inside the card must not start a new lookup or close it.
+  await card.locator('[data-group]', { hasText: /^raining$/ }).click();
+  await page.waitForTimeout(400);
+  await expect(card).toBeVisible();
+  await expect(source.locator('.bg-highlight')).toHaveText('pleut');
+});

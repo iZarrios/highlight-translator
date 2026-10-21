@@ -17,9 +17,43 @@ const fixture = `<!doctype html>
     <h1>Selection fixture</h1>
     <p id="french">Le renard brun rapide saute par-dessus le chien paresseux.</p>
     <p id="idiom">This only happens once in a blue moon.</p>
+    <p id="rain">Il pleut des cordes depuis ce matin, alors nous avons annulé le pique-nique au bord du lac.</p>
     <textarea id="editable">Bonjour depuis un champ modifiable.</textarea>
   </body>
 </html>`;
+
+const rainTranslation =
+  'It has been raining cats and dogs since this morning, so we cancelled the picnic by the lake.';
+const rainExplanation =
+  '"Il pleut des cordes" is a French idiom for very heavy rain, like "raining cats and dogs". The rain is why the lakeside picnic was cancelled.';
+// What LFM2.5-24B-A2B answered for the rain sentence, including two made-up
+// values ("il a", "et") that the client must drop.
+const rainAlignment = {
+  It: 'Il pleut',
+  has: 'il a',
+  been: 'été',
+  raining: 'pleut',
+  cats: 'des cordes',
+  and: 'et',
+  dogs: 'des cordes',
+  since: 'depuis',
+  this: 'ce',
+  morning: 'matin',
+  so: 'alors',
+  we: 'nous',
+  cancelled: 'avons annulé',
+  the: 'le',
+  picnic: 'pique-nique',
+  by: 'au bord du',
+  lake: 'lac',
+};
+
+function alignmentAnswer(input) {
+  const keys = input.response_format.json_schema.schema.required;
+  return Object.fromEntries(
+    keys.map((key) => [key, rainAlignment[key.replace(/^\d+ /, '')] ?? '']),
+  );
+}
 
 function json(response, status, body) {
   response.writeHead(status, {
@@ -53,6 +87,23 @@ const server = createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk;
     const input = JSON.parse(body);
+    const isRain = input.messages.some((message) =>
+      message.content.includes('Il pleut des cordes'),
+    );
+    if (input.response_format?.json_schema?.name === 'alignment') {
+      return json(response, 200, {
+        choices: [
+          { message: { content: JSON.stringify(alignmentAnswer(input)) } },
+        ],
+      });
+    }
+    if (isRain) {
+      const content = JSON.stringify({
+        translation: rainTranslation,
+        explanation: rainExplanation,
+      });
+      return json(response, 200, { choices: [{ message: { content } }] });
+    }
     if (input.stream) {
       response.writeHead(200, {
         'content-type': 'text/event-stream',

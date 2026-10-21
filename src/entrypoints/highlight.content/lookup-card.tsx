@@ -9,6 +9,10 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { CollapsibleText } from '@/components/collapsible-text';
 import { Button } from '@/components/ui/button';
+import {
+  AlignedTranslation,
+  SourceText,
+} from '@/entrypoints/highlight.content/aligned-translation';
 import { useLookupStore } from '@/entrypoints/highlight.content/store';
 import {
   type LookupResult,
@@ -81,6 +85,15 @@ export function LookupCard() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: 12, top: 12 });
   const [anchorVisible, setAnchorVisible] = useState(true);
+  const [activeGroup, setActiveGroup] = useState<number>();
+  const groups =
+    result.alignment.status === 'success' &&
+    result.alignment.value.some(({ source }) => source)
+      ? result.alignment.value
+      : undefined;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset per lookup
+  useEffect(() => setActiveGroup(undefined), [selection]);
 
   useEffect(() => {
     if (!selection || !cardRef.current) return;
@@ -146,9 +159,18 @@ export function LookupCard() {
       }}
     >
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-        <p className="line-clamp-2 min-w-0 text-xs leading-5 text-muted-foreground">
-          {selection.text}
-        </p>
+        {groups ? (
+          <SourceText
+            text={selection.text}
+            groups={groups}
+            active={activeGroup}
+            onActive={setActiveGroup}
+          />
+        ) : (
+          <p className="line-clamp-2 min-w-0 text-xs leading-5 text-muted-foreground">
+            {selection.text}
+          </p>
+        )}
         <Button
           type="button"
           variant="ghost"
@@ -173,9 +195,31 @@ export function LookupCard() {
           ) : null}
           {result.translation.status === 'success' ? (
             <div className="flex items-start justify-between gap-2">
-              <p className="text-lg font-medium leading-7">
-                {result.translation.value}
-              </p>
+              <div className="min-w-0 flex-1">
+                {groups ? (
+                  <AlignedTranslation
+                    translation={result.translation.value}
+                    groups={groups}
+                    active={activeGroup}
+                    onActive={setActiveGroup}
+                  />
+                ) : (
+                  <p className="text-lg font-medium leading-7">
+                    {result.translation.value}
+                  </p>
+                )}
+                {result.alignment.status === 'loading' &&
+                result.explanation.status !== 'loading' ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mapping words…
+                  </p>
+                ) : null}
+                {result.alignment.status === 'error' ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Word mapping unavailable.
+                  </p>
+                ) : null}
+              </div>
               <CopyButton value={result.translation.value} />
             </div>
           ) : null}

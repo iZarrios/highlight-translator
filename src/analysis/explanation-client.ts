@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AlignedGroup, AlignmentRequest } from '@/analysis/alignment';
 
 export type ExplanationRequest = {
   text: string;
@@ -28,4 +29,8 @@ export interface ExplanationClient {
     request: ExplanationRequest,
     signal?: AbortSignal,
   ): AsyncIterable<ExplanationChunk>;
+  align(
+    request: AlignmentRequest,
+    signal?: AbortSignal,
+  ): Promise<AlignedGroup[]>;
 }

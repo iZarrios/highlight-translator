@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
+import type { AlignedGroup } from '@/analysis/alignment';
 import type { ExplanationServerMessage } from '@/messaging/protocol';
 import { sendRuntimeRequest } from '@/messaging/protocol';
 import type { EndpointLocation } from '@/providers/provider-profile';
@@ -13,12 +14,14 @@ type AsyncValue<T> =
 export type LookupResult = {
   translation: AsyncValue<string>;
   explanation: AsyncValue<string>;
+  alignment: AsyncValue<AlignedGroup[]>;
   provider?: { name: string; model: string; location: EndpointLocation };
 };
 
 const initialResult: LookupResult = {
   translation: { status: 'idle' },
   explanation: { status: 'idle' },
+  alignment: { status: 'idle' },
 };
 
 export function useLookup(selection?: SelectionSnapshot): LookupResult {
@@ -40,6 +43,7 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
     setResult({
       translation: { status: 'loading' },
       explanation: { status: 'loading' },
+      alignment: { status: 'loading' },
     });
     void configPromise
       .then((config) => {
@@ -75,6 +79,16 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
               explanation: { status: 'success', value: explanationText },
             }));
           }
+        } else if (event.type === 'alignment') {
+          setResult((current) => ({
+            ...current,
+            alignment: { status: 'success', value: event.groups },
+          }));
+        } else if (event.type === 'alignment-error') {
+          setResult((current) => ({
+            ...current,
+            alignment: { status: 'error', error: event.error },
+          }));
         } else if (event.type === 'done') {
           if (!translationText || !explanationText) {
             setResult((current) => ({
@@ -103,6 +117,7 @@ export function useLookup(selection?: SelectionSnapshot): LookupResult {
             ...current,
             translation: { status: 'error', error: event.error },
             explanation: { status: 'error', error: event.error },
+            alignment: { status: 'idle' },
           }));
           resolve();
         }

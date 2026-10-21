@@ -136,6 +136,7 @@ export default defineBackground(() => {
 
         const controller = new AbortController();
         controllers.set(message.requestId, controller);
+        let alignment: Promise<void> | undefined;
         try {
           const settings = await settingsRepository.get();
           const provider = activeProvider(settings);
@@ -148,12 +149,36 @@ export default defineBackground(() => {
               ? { nearbyContext: message.nearbyContext }
               : {}),
           };
+          // The mapping only needs the final translation, so it runs while
+          // the explanation is still being generated.
+          const startAlignment = (translation: string) => {
+            alignment ??= client
+              .align({ text: message.text, translation }, controller.signal)
+              .then((groups) =>
+                post({
+                  type: 'alignment',
+                  requestId: message.requestId,
+                  groups,
+                }),
+              )
+              .catch((error: unknown) => {
+                if (controller.signal.aborted) return;
+                post({
+                  type: 'alignment-error',
+                  requestId: message.requestId,
+                  error: errorMessage(error),
+                });
+              });
+          };
 
           if (settings.streamResults) {
+            let translation = '';
             for await (const chunk of client.streamExplanation(
               request,
               controller.signal,
             )) {
+              if (chunk.field === 'translation') translation += chunk.text;
+              else if (translation) startAlignment(translation);
               post({
                 type: 'chunk',
                 requestId: message.requestId,
@@ -161,8 +186,10 @@ export default defineBackground(() => {
                 text: chunk.text,
               });
             }
+            if (translation) startAlignment(translation);
           } else {
             const result = await client.explain(request, controller.signal);
+            startAlignment(result.translation);
             post({
               type: 'chunk',
               requestId: message.requestId,
@@ -186,6 +213,7 @@ export default defineBackground(() => {
             });
           }
         } finally {
+          await alignment;
           controllers.delete(message.requestId);
         }
       },

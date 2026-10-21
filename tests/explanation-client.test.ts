@@ -165,4 +165,64 @@ describe('OpenAIExplanationClient', () => {
       'invalid structured',
     );
   });
+  it('maps each translation word with a word-keyed schema', async () => {
+    let requestBody: Record<string, unknown> | undefined;
+    const client = new OpenAIExplanationClient(
+      provider,
+      async (_input, init) => {
+        requestBody = JSON.parse(String(init?.body));
+        return new Response(
+          completion(
+            JSON.stringify({
+              '1 the': 'la',
+              '2 red': 'rouge',
+              '3 car': 'auto',
+            }),
+          ),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      },
+    );
+
+    const groups = await client.align({
+      text: 'la voiture rouge',
+      translation: 'the red car',
+    });
+
+    expect(groups).toEqual([
+      { translation: { start: 0, end: 3 }, source: { start: 0, end: 2 } },
+      { translation: { start: 4, end: 7 }, source: { start: 11, end: 16 } },
+      { translation: { start: 8, end: 11 } },
+    ]);
+    expect(requestBody).toMatchObject({
+      stream: false,
+      max_tokens: 3 * 16 + 40,
+      reasoning_effort: 'none',
+      thinking_budget_tokens: 0,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'alignment',
+          strict: true,
+          schema: {
+            required: ['1 the', '2 red', '3 car'],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+  });
+
+  it('skips the mapping request when there is nothing to map', async () => {
+    const fetcher = vi.fn();
+    const client = new OpenAIExplanationClient(provider, fetcher);
+
+    await expect(
+      client.align({ text: 'hello there', translation: 'hello there' }),
+    ).resolves.toEqual([]);
+    await expect(
+      client.align({ text: 'x', translation: 'word '.repeat(101) }),
+    ).resolves.toEqual([]);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });
