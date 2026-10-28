@@ -68,9 +68,10 @@ const explanationResponseFormat = {
   },
 } as const;
 
-// we disable thinking as most of the time the use case is too simple to need any reasoning
+// we disable thinking as most of the time the use case is too simple to need any reasoning.
+// Only the budget is sent: llama.cpp ignores reasoning_effort for some models (LFM2.5),
+// and sending both breaks schema-constrained output for others (LFM3).
 const THINKING_OFF = {
-  reasoning_effort: 'none',
   thinking_budget_tokens: 0,
 } as const;
 
