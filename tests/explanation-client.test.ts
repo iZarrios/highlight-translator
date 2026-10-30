@@ -165,7 +165,7 @@ describe('OpenAIExplanationClient', () => {
       'invalid structured',
     );
   });
-  it('maps each translation word with a word-keyed schema', async () => {
+  it('maps each translation word to numbered source words', async () => {
     let requestBody: Record<string, unknown> | undefined;
     const client = new OpenAIExplanationClient(
       provider,
@@ -174,9 +174,9 @@ describe('OpenAIExplanationClient', () => {
         return new Response(
           completion(
             JSON.stringify({
-              '1 the': 'la',
-              '2 red': 'rouge',
-              '3 car': 'auto',
+              '1:the': ['1:la'],
+              '2:red': ['3:rouge'],
+              '3:car': [],
             }),
           ),
           { status: 200, headers: { 'content-type': 'application/json' } },
@@ -196,7 +196,7 @@ describe('OpenAIExplanationClient', () => {
     ]);
     expect(requestBody).toMatchObject({
       stream: false,
-      max_tokens: 3 * 16 + 40,
+      max_tokens: 3 * 20 + 40,
       thinking_budget_tokens: 0,
       response_format: {
         type: 'json_schema',
@@ -204,7 +204,12 @@ describe('OpenAIExplanationClient', () => {
           name: 'word-mapping',
           strict: true,
           schema: {
-            required: ['1 the', '2 red', '3 car'],
+            properties: {
+              '1:the': {
+                items: { enum: ['1:la', '2:voiture', '3:rouge'] },
+              },
+            },
+            required: ['1:the', '2:red', '3:car'],
             additionalProperties: false,
           },
         },

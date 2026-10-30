@@ -16,7 +16,7 @@ import {
   splitWords,
   type WordGroup,
   type WordMappingRequest,
-  wordKeys,
+  wordLabels,
   wordMappingResponseSchema,
   wordMappingSchema,
 } from '@/word-mapping';
@@ -271,13 +271,17 @@ export class OpenAIExplanationClient implements ExplanationClient {
     request: WordMappingRequest,
     signal?: AbortSignal,
   ): Promise<WordGroup[]> {
+    const sourceWords = splitWords(request.text);
     const words = splitWords(request.translation);
     if (
+      sourceWords.length === 0 ||
       words.length === 0 ||
       words.length > MAX_MAPPED_WORDS ||
       request.translation.trim() === request.text.trim()
     )
       return [];
+    const sourceLabels = wordLabels(sourceWords);
+    const translationLabels = wordLabels(words);
 
     const response = await this.fetcher(
       resolveOpenAIUrl(this.provider.baseUrl, 'chat/completions'),
@@ -286,18 +290,18 @@ export class OpenAIExplanationClient implements ExplanationClient {
         headers: requestHeaders(this.provider),
         body: JSON.stringify({
           model: this.provider.model,
-          messages: buildWordMappingMessages(request),
+          messages: buildWordMappingMessages(sourceLabels, translationLabels),
           response_format: {
             type: 'json_schema',
             json_schema: {
               name: 'word-mapping',
               strict: true,
-              schema: wordMappingSchema(wordKeys(words)),
+              schema: wordMappingSchema(translationLabels, sourceLabels),
             },
           },
           ...THINKING_OFF,
           temperature: 0,
-          max_tokens: words.length * 16 + 40,
+          max_tokens: words.length * 20 + 40,
           stream: false,
         }),
         ...(signal ? { signal } : {}),
@@ -306,13 +310,13 @@ export class OpenAIExplanationClient implements ExplanationClient {
     if (!response.ok) throw await responseError(response);
 
     const content = getContentFromCompletion(await response.json());
-    let answer: Record<string, string>;
+    let answer: Record<string, string[]>;
     try {
       answer = wordMappingResponseSchema.parse(JSON.parse(content));
     } catch {
       throw new Error('The provider returned an invalid word mapping.');
     }
-    return resolveWordMapping(request.text, words, answer);
+    return resolveWordMapping(sourceWords, words, answer);
   }
 
   async *streamExplanation(

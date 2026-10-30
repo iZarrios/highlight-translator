@@ -5,7 +5,7 @@ export const MAX_MAPPED_WORDS = 100;
 
 export type TextSpan = { start: number; end: number };
 
-export type TranslationWord = TextSpan & { word: string };
+export type Word = TextSpan & { word: string };
 
 /** Consecutive translation words and the source span they render, if any. */
 export type WordGroup = {
@@ -19,60 +19,60 @@ export type WordMappingRequest = {
 };
 
 const WORD_PATTERN = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
-const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
-export function splitWords(translation: string): TranslationWord[] {
-  return [...translation.matchAll(WORD_PATTERN)].map((match) => ({
+export function splitWords(text: string): Word[] {
+  return [...text.matchAll(WORD_PATTERN)].map((match) => ({
     word: match[0],
     start: match.index,
     end: match.index + match[0].length,
   }));
 }
 
-/** Numbered keys make each word unique and keep the model's answer in order. */
-export function wordKeys(words: TranslationWord[]): string[] {
-  const width = String(words.length).length;
-  return words.map(
-    ({ word }, index) => `${String(index + 1).padStart(width, '0')} ${word}`,
-  );
+/**
+ * Numbered labels make each word unique and let the model answer by choosing
+ * from a fixed list instead of retyping words, which it does unreliably.
+ */
+export function wordLabels(words: Word[]): string[] {
+  return words.map(({ word }, index) => `${index + 1}:${word}`);
 }
 
-export function wordMappingSchema(keys: string[]) {
+/** One key per translation word, each listing the source words it renders. */
+export function wordMappingSchema(
+  translationLabels: string[],
+  sourceLabels: string[],
+) {
   return {
     type: 'object',
     properties: Object.fromEntries(
-      keys.map((key) => [key, { type: 'string' }]),
+      translationLabels.map((label) => [
+        label,
+        { type: 'array', items: { type: 'string', enum: sourceLabels } },
+      ]),
     ),
-    required: keys,
+    required: translationLabels,
     additionalProperties: false,
   } as const;
 }
 
-export const wordMappingResponseSchema = z.record(z.string(), z.string());
+export const wordMappingResponseSchema = z.record(
+  z.string(),
+  z.array(z.string()),
+);
 
-function isWordBoundary(text: string, index: number): boolean {
-  return !WORD_CHARACTER.test(text[index] ?? '');
-}
-
-function findSourceSpan(
-  source: string,
-  value: string,
-  from: number,
+function sourceSpan(
+  sourceWords: Word[],
+  sourceIndex: Map<string, number>,
+  labels: string[],
 ): TextSpan | undefined {
-  const needle = value.trim().toLocaleLowerCase();
-  const haystack = source.toLocaleLowerCase();
-  if (!needle || haystack.length !== source.length) return undefined;
-
-  for (const start of [from, 0]) {
-    let index = haystack.indexOf(needle, start);
-    while (index !== -1) {
-      const end = index + needle.length;
-      if (isWordBoundary(source, index - 1) && isWordBoundary(source, end))
-        return { start: index, end };
-      index = haystack.indexOf(needle, index + 1);
-    }
-  }
-  return undefined;
+  const words = labels.flatMap((label) => {
+    const word = sourceWords[sourceIndex.get(label) ?? -1];
+    return word ? [word] : [];
+  });
+  if (words.length === 0) return undefined;
+  return {
+    start: Math.min(...words.map(({ start }) => start)),
+    end: Math.max(...words.map(({ end }) => end)),
+  };
 }
 
 const sameSpan = (left?: TextSpan, right?: TextSpan) =>
@@ -82,27 +82,28 @@ const sameSpan = (left?: TextSpan, right?: TextSpan) =>
   left.end === right.end;
 
 /**
- * Maps the model's answer back onto real text positions. Values that are not
- * verbatim in the source are dropped, and neighbouring words that render the
- * same source span (an idiom) become one group.
+ * Maps the model's chosen source labels back onto real text positions.
+ * Unknown labels are dropped, and neighbouring words that render the same
+ * source span (an idiom) become one group.
  */
 export function resolveWordMapping(
-  source: string,
-  words: TranslationWord[],
-  answer: Record<string, string>,
+  sourceWords: Word[],
+  translationWords: Word[],
+  answer: Record<string, string[]>,
 ): WordGroup[] {
-  const keys = wordKeys(words);
+  const sourceIndex = new Map(
+    wordLabels(sourceWords).map((label, index) => [label, index]),
+  );
+  const keys = wordLabels(translationWords);
   const groups: WordGroup[] = [];
-  let cursor = 0;
   let lastMapped = -1;
 
-  words.forEach((word, index) => {
-    const span = findSourceSpan(
-      source,
-      answer[keys[index] ?? ''] ?? '',
-      cursor,
+  translationWords.forEach((word, index) => {
+    const span = sourceSpan(
+      sourceWords,
+      sourceIndex,
+      answer[keys[index] ?? ''] ?? [],
     );
-    if (span) cursor = span.end;
 
     const previous = groups[lastMapped];
     if (span && previous && sameSpan(previous.source, span)) {

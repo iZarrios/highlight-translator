@@ -26,15 +26,11 @@ const rainTranslation =
   'It has been raining cats and dogs since this morning, so we cancelled the picnic by the lake.';
 const rainExplanation =
   '"Il pleut des cordes" is a French idiom for very heavy rain, like "raining cats and dogs". The rain is why the lakeside picnic was cancelled.';
-// What LFM2.5-24B-A2B answered for the rain sentence, including two made-up
-// values ("il a", "et") that the client must drop.
+// Source words for each translation word of the rain sentence.
 const rainWordMapping = {
   It: 'Il pleut',
-  has: 'il a',
-  been: 'été',
   raining: 'pleut',
   cats: 'des cordes',
-  and: 'et',
   dogs: 'des cordes',
   since: 'depuis',
   this: 'ce',
@@ -49,9 +45,18 @@ const rainWordMapping = {
 };
 
 function wordMappingAnswer(input) {
-  const keys = input.response_format.json_schema.schema.required;
+  const { properties, required } = input.response_format.json_schema.schema;
   return Object.fromEntries(
-    keys.map((key) => [key, rainWordMapping[key.replace(/^\d+ /, '')] ?? '']),
+    required.map((key) => {
+      const sourceLabels = properties[key].items.enum;
+      const words = rainWordMapping[key.replace(/^\d+:/, '')]?.split(' ') ?? [];
+      return [
+        key,
+        words.flatMap((word) =>
+          sourceLabels.filter((label) => label.replace(/^\d+:/, '') === word),
+        ),
+      ];
+    }),
   );
 }
 
